@@ -1,35 +1,30 @@
 pipeline {
-    agent any
-    tools {
-        maven 'maven3.9'
+    agent {
+        docker {
+            image 'docker:20.10.12'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
     }
     stages {
-        stage('build jar') {
+        stage('Build') {
             steps {
-                script {
-                    echo "Building the application..."
-                    sh 'mvn package'
+                echo 'Building the application...'
+                sh 'docker build -t myapp .'
+            }
+        }
+        stage('Push') {
+            steps {
+                echo 'Pushing the Docker image...'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    sh "echo $PASS | docker login -u $USER --password-stdin"
+                    sh 'docker push myuser/myapp:latest'
                 }
             }
         }
-        stage('build image') {
+        stage('Deploy') {
             steps {
-                script {
-                    echo "Building the image..."
-                    withCredentials([usernamePassword(credentialsId:'dockerhub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-                        sh 'docker build -t vamshidabbara/demojavaapp:2.0 .'
-                        sh "echo $PASS | docker login -u $USER --password-stdin"
-                        sh 'docker push vamshidabbara/demojavaapp:2.0'
-                    }
-                }
-            }
-        }
-        stage('deploy') {
-            steps {
-                script {
-                    echo "Deploying the application..."
-                    // Add deployment steps here if needed
-                }
+                echo 'Deploying the application...'
+                // Add deployment steps here
             }
         }
     }
